@@ -1559,6 +1559,9 @@ struct FKey {
 
 #define OE_Default  10		/* Do whatever the default action is */
 
+#define CONSTRAINT_CHECK_REPLACE 1
+#define CONSTRAINT_MAIN_MODE 2
+
 /*
  * An instance of the following structure is passed as the first
  * argument to sqlite3VdbeKeyCompare and is used to control the
@@ -3283,7 +3286,7 @@ int sqlite3GenerateIndexKey(Parse *, Index *, int, int, int, int *, Index *,
 			    int);
 void sqlite3ResolvePartIdxLabel(Parse *, int);
 void sqlite3GenerateConstraintChecks(Parse *, Table *, int *, int, int, int,
-				     int, u8, u8, int, int *, int *);
+				     int, u8, u8, int, int *, int *, int);
 void sqlite3CompleteInsertion(Parse *, Table *, int, int *, int, u8);
 int sqlite3OpenTableAndIndices(Parse *, Table *, int, u8, int, u8 *, int *,
 			       int *, u8, u8);

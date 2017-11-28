@@ -544,6 +544,18 @@ sqlite3Update(Parse * pParse,		/* The parser context */
 		}
 	}
 
+	if (!isView) {
+		int bReplace = 0;	/* True if REPLACE conflict resolution might happen */
+
+		/* Do constraint checks. */
+		assert(regOldPk > 0);
+		sqlite3GenerateConstraintChecks(pParse, pTab, aRegIdx, iDataCur,
+						iIdxCur, regNewPk,
+						regOldPk, chngPk, onError,
+						labelContinue, &bReplace,
+						aXRef, CONSTRAINT_CHECK_REPLACE);
+	}
+
 	/* Fire any BEFORE UPDATE triggers. This happens before constraints are
 	 * verified. One could argue that this is wrong.
 	 */
@@ -593,7 +605,7 @@ sqlite3Update(Parse * pParse,		/* The parser context */
 						iIdxCur, regNewPk,
 						regOldPk, chngPk, onError,
 						labelContinue, &bReplace,
-						aXRef);
+						aXRef, CONSTRAINT_MAIN_MODE);
 
 		/* Do FK constraint checks. */
 		if (hasFK) {
