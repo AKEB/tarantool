@@ -131,15 +131,27 @@ key_def_new(uint32_t part_count)
 }
 
 struct key_def *
-key_def_new_with_parts(struct key_part_def *parts, uint32_t part_count)
+key_def_new_with_parts(struct key_part_def *parts, uint32_t part_count,
+		       uint32_t min_field_count)
 {
 	struct key_def *def = key_def_new(part_count);
 	if (def == NULL)
 		return NULL;
 
-	for (uint32_t i = 0; i < part_count; i++) {
+	/*
+	 * Update min_field_count to take a new key_def into
+	 * account.
+	 */
+	for (uint32_t i = 0; i < part_count; ++i) {
+		struct key_part_def *part = &parts[i];
+		if (!part->is_nullable && part->fieldno + 1 > min_field_count)
+			min_field_count = part->fieldno + 1;
+	}
+
+	for (uint32_t i = 0; i < part_count; ++i) {
 		struct key_part_def *part = &parts[i];
 		struct coll *coll = NULL;
+		bool is_optional = part->fieldno + 1 > min_field_count;
 		if (part->coll_id != COLL_NONE) {
 			coll = coll_by_id(part->coll_id);
 			if (coll == NULL) {
@@ -150,7 +162,7 @@ key_def_new_with_parts(struct key_part_def *parts, uint32_t part_count)
 			}
 		}
 		key_def_set_part(def, i, part->fieldno, part->type,
-				 part->is_nullable, coll);
+				 part->is_nullable, is_optional, coll);
 	}
 	return def;
 }
@@ -179,7 +191,7 @@ box_key_def_new(uint32_t *fields, uint32_t *types, uint32_t part_count)
 	for (uint32_t item = 0; item < part_count; ++item) {
 		key_def_set_part(key_def, item, fields[item],
 				 (enum field_type)types[item],
-				 key_part_def_default.is_nullable, NULL);
+				 key_part_def_default.is_nullable, false, NULL);
 	}
 	return key_def;
 }
@@ -254,15 +266,19 @@ key_part_check_compatibility(const struct key_part *old_parts,
 
 void
 key_def_set_part(struct key_def *def, uint32_t part_no, uint32_t fieldno,
-		 enum field_type type, bool is_nullable, struct coll *coll)
+		 enum field_type type, bool is_nullable, bool is_optional,
+		 struct coll *coll)
 {
 	assert(part_no < def->part_count);
 	assert(type < field_type_MAX);
+	assert(!is_optional || is_nullable);
 	def->is_nullable |= is_nullable;
+	def->is_optional |= is_optional;
 	def->parts[part_no].is_nullable = is_nullable;
 	def->parts[part_no].fieldno = fieldno;
 	def->parts[part_no].type = type;
 	def->parts[part_no].coll = coll;
+	def->parts[part_no].is_optional = is_optional;
 	column_mask_set_fieldno(&def->column_mask, fieldno);
 	/**
 	 * When all parts are set, initialize the tuple
@@ -530,7 +546,8 @@ key_def_merge(const struct key_def *first, const struct key_def *second)
 	end = part + first->part_count;
 	for (; part != end; part++) {
 		key_def_set_part(new_def, pos++, part->fieldno, part->type,
-				 part->is_nullable, part->coll);
+				 part->is_nullable, part->is_optional,
+				 part->coll);
 	}
 
 	/* Set-append second key def's part to the new key def. */
@@ -540,7 +557,8 @@ key_def_merge(const struct key_def *first, const struct key_def *second)
 		if (key_def_find(first, part->fieldno))
 			continue;
 		key_def_set_part(new_def, pos++, part->fieldno, part->type,
-				 part->is_nullable, part->coll);
+				 part->is_nullable, part->is_optional,
+				 part->coll);
 	}
 	return new_def;
 }

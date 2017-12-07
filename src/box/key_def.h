@@ -72,6 +72,8 @@ struct key_part {
 	struct coll *coll;
 	/** True if a part can store NULLs. */
 	bool is_nullable;
+	/** True, if a part can absense in a tuple. */
+	bool is_optional;
 };
 
 struct key_def;
@@ -126,6 +128,11 @@ struct key_def {
 	uint32_t unique_part_count;
 	/** True, if at least one part can store NULL. */
 	bool is_nullable;
+	/**
+	 * True, if some key parts can absense in a tuple. These
+	 * fields assumed to be MP_NIL.
+	 */
+	bool is_optional;
 	/** Key fields mask. @sa column_mask.h for details. */
 	uint64_t column_mask;
 	/** The size of the 'parts' array. */
@@ -216,7 +223,8 @@ key_def_new(uint32_t part_count);
  * and initialize its parts.
  */
 struct key_def *
-key_def_new_with_parts(struct key_part_def *parts, uint32_t part_count);
+key_def_new_with_parts(struct key_part_def *parts, uint32_t part_count,
+		       uint32_t min_field_count);
 
 /**
  * Dump part definitions of the given key def.
@@ -230,7 +238,8 @@ key_def_dump_parts(const struct key_def *def, struct key_part_def *parts);
  */
 void
 key_def_set_part(struct key_def *def, uint32_t part_no, uint32_t fieldno,
-		 enum field_type type, bool is_nullable, struct coll *coll);
+		 enum field_type type, bool is_nullable, bool is_optional,
+		 struct coll *coll);
 
 /**
  * An snprint-style function to print a key definition.

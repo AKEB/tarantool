@@ -3015,6 +3015,7 @@ vy_join_cb(const struct vy_log_record *record, void *arg)
 		if (ctx->key_def != NULL)
 			free(ctx->key_def);
 		ctx->key_def = key_def_new_with_parts(record->key_parts,
+						      record->key_part_count,
 						      record->key_part_count);
 		if (ctx->key_def == NULL)
 			return -1;

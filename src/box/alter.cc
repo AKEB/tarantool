@@ -323,7 +323,39 @@ index_def_new_from_tuple(struct tuple *tuple, struct space *space)
 					     space->def->field_count) != 0)
 			diag_raise();
 	}
-	key_def = key_def_new_with_parts(part_def, part_count);
+	struct space_def *sd = space->def;
+	int unchanged_index_count = 0;
+	struct key_def **keys = NULL;
+	/*
+	 * To detect which key parts are optional, min_field_count
+	 * is required. But min_field_count from the old space
+	 * format can not be used. For example, consider the case,
+	 * when a space has no format, has a primary index on the
+	 * first field and has a single secondary index on a
+	 * non-nullable second field. Min field count here is 2.
+	 * Now alter the secondary index to make its part be
+	 * nullable. The 'space' variable here is the old space,
+	 * where min_field_count is still 2, but actually it is
+	 * already 1. Actual min_field_count must be calculated
+	 * using old unchanged indexes, NEW definition of an
+	 * updated index and a space format, defined by a user.
+	 */
+	for (uint32_t i = 0; i < space->index_count; ++i) {
+		if (space->index[i]->def->iid != index_id)
+			++unchanged_index_count;
+	}
+	if (unchanged_index_count > 0) {
+		size_t bsize = unchanged_index_count * sizeof(keys[0]);
+		keys = (struct key_def **) region_alloc_xc(&fiber()->gc, bsize);
+		for (uint32_t i = 0, j = 0; i < space->index_count; ++i) {
+			if (space->index[i]->def->iid != index_id)
+				keys[j++] = space->index[i]->def->key_def;
+		}
+	}
+	uint32_t min_field_count =
+		tuple_format_min_field_count(keys, unchanged_index_count,
+					     sd->fields, sd->field_count);
+	key_def = key_def_new_with_parts(part_def, part_count, min_field_count);
 	if (key_def == NULL)
 		diag_raise();
 	struct index_def *index_def =
