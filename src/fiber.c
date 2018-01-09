@@ -148,8 +148,6 @@ fiber_attr_getstacksize(struct fiber_attr *fiber_attr)
 				    fiber_attr_default.stack_size;
 }
 
-static void
-fiber_recycle(struct fiber *fiber);
 
 static void
 fiber_destroy(struct cord *cord, struct fiber *f);
@@ -376,8 +374,8 @@ fiber_reschedule(void)
 	fiber_yield();
 }
 
-int
-fiber_join(struct fiber *fiber)
+void
+fiber_join_wait(struct fiber *fiber)
 {
 	assert(fiber->flags & FIBER_IS_JOINABLE);
 
@@ -386,8 +384,14 @@ fiber_join(struct fiber *fiber)
 		fiber_yield();
 	}
 	assert(fiber_is_dead(fiber));
-	/* Move exception to the caller */
+}
+
+int
+fiber_join(struct fiber *fiber)
+{
+	fiber_join_wait(fiber);
 	int ret = fiber->f_ret;
+	/* Move exception to the caller */
 	if (ret != 0) {
 		assert(!diag_is_empty(&fiber->diag));
 		diag_move(&fiber->diag, &fiber()->diag);
@@ -598,7 +602,7 @@ fiber_reset(struct fiber *fiber)
 }
 
 /** Destroy an active fiber and prepare it for reuse. */
-static void
+void
 fiber_recycle(struct fiber *fiber)
 {
 	/* no exceptions are leaking */

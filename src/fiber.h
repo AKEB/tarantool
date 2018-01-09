@@ -105,7 +105,8 @@ enum fiber_key {
 	/** User global privilege and authentication token */
 	FIBER_KEY_USER = 3,
 	FIBER_KEY_MSG = 4,
-	FIBER_KEY_MAX = 5
+	FIBER_KEY_RESULT = 5,
+	FIBER_KEY_MAX = 6
 };
 
 /** \cond public */
@@ -625,6 +626,14 @@ fiber_c_invoke(fiber_func f, va_list ap)
 	return f(ap);
 }
 
+/** Destroy an active fiber and prepare it for reuse. */
+void
+fiber_recycle(struct fiber *fiber);
+
+/** Wait until fiber is finished. Applicable only to joinable fibers */
+void
+fiber_join_wait(struct fiber *fiber);
+
 #if defined(__cplusplus)
 } /* extern "C" */
 
@@ -669,6 +678,7 @@ fiber_cxx_invoke(fiber_func f, va_list ap)
 }
 
 #endif /* defined(__cplusplus) */
+
 
 static inline void *
 region_aligned_alloc_cb(void *ctx, size_t size)
