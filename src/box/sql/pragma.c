@@ -345,7 +345,6 @@ sqlite3Pragma(Parse * pParse, Token * pId,	/* First part of [schema.]id field */
 			pTab = sqlite3LocateTable(pParse, LOCATE_NOERR, zRight);
 			if (pTab) {
 				int i, k;
-				int nHidden = 0;
 				Column *pCol;
 				Index *pPk = sqlite3PrimaryKeyIndex(pTab);
 				pParse->nMem = 6;
@@ -353,10 +352,6 @@ sqlite3Pragma(Parse * pParse, Token * pId,	/* First part of [schema.]id field */
 				sqlite3ViewGetColumnNames(pParse, pTab);
 				for (i = 0, pCol = pTab->aCol; i < pTab->nCol;
 				     i++, pCol++) {
-					if (IsHiddenColumn(pCol)) {
-						nHidden++;
-						continue;
-					}
 					if ((pCol->
 					     colFlags & COLFLAG_PRIMKEY) == 0) {
 						k = 0;
@@ -372,8 +367,7 @@ sqlite3Pragma(Parse * pParse, Token * pId,	/* First part of [schema.]id field */
 					assert(pCol->pDflt == 0
 					       || pCol->pDflt->op == TK_SPAN);
 					sqlite3VdbeMultiLoad(v, 1, "issisi",
-							     i - nHidden,
-							     pCol->zName,
+							     i, pCol->zName,
 							     sqlite3ColumnType
 							     (pCol, ""),
 							     pCol->
