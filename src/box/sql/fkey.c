@@ -865,7 +865,7 @@ fkParentIsModified(Table * pTab, FKey * p, int *aChange)
 					if (0 ==
 					    strcmp(pCol->zName, zKey))
 						return 1;
-				} else if (pCol->colFlags & COLFLAG_PRIMKEY) {
+				} else if (table_column_is_primkey(pTab, iKey)) {
 					return 1;
 				}
 			}
