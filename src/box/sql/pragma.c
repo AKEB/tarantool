@@ -368,8 +368,8 @@ sqlite3Pragma(Parse * pParse, Token * pId,	/* First part of [schema.]id field */
 					       || pCol->pDflt->op == TK_SPAN);
 					sqlite3VdbeMultiLoad(v, 1, "issisi",
 							     i, pCol->zName,
-							     sqlite3ColumnType
-							     (pCol, ""),
+							     field_type_strs[sqlite3ColumnType
+							     (pCol)],
 							     pCol->
 							     notNull ? 1 : 0,
 							     pCol->
