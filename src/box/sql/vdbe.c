@@ -45,6 +45,7 @@
 #include "vdbeInt.h"
 #include "tarantoolInt.h"
 #include "box/sql.h"
+#include "box/sequence.h"
 
 #include "msgpuck/msgpuck.h"
 
@@ -1139,6 +1140,39 @@ case OP_String: {          /* out2 */
 	break;
 }
 
+/* Opcode: NextValue P1 P2 * * *
+ * Synopsis: r[P2] = next val from seq r[P1]
+ *
+ * Get next value for space from register P1 and write it into
+ * register P2. Opcode semantics assumes that space P1 has attached
+ * sequence, otherwise assertion fault will be caused.
+ *
+ * P1 - contains space_id of necessary space with sequence
+ * P2 - register number for output
+ */
+case OP_NextValue: {
+	int64_t value;
+	int space_id = pOp->p1;
+
+	struct space * autoinc_space = space_by_id(space_id);
+	assert(autoinc_space);
+
+	struct sequence * space_seq = autoinc_space->sequence;
+	assert(space_seq);
+
+	if (sequence_next(space_seq, &value) != 0) {
+		rc = SQLITE_TARANTOOL_ERROR;
+		goto abort_due_to_error;
+	}
+
+	pOut = out2Prerelease(p, pOp);
+
+	pOut->flags = MEM_Int;
+	pOut->n = 0;
+	pOut->u.i = value;
+
+	break;
+}
 /* Opcode: Null P1 P2 P3 * *
  * Synopsis: r[P2..P3]=NULL
  *

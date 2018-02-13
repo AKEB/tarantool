@@ -34,6 +34,7 @@
  * to handle INSERT statements in SQLite.
  */
 #include "sqliteInt.h"
+#include "tarantoolInt.h"
 #include "box/session.h"
 
 /*
@@ -323,6 +324,7 @@ sqlite3Insert(Parse * pParse,	/* Parser context */
 	int iDataCur = 0;	/* VDBE cursor that is the main data repository */
 	int iIdxCur = 0;	/* First index cursor */
 	int ipkColumn = -1;	/* Column that is the INTEGER PRIMARY KEY */
+	int space_id = -1;	/* space id of table */
 	int endOfLoop;		/* Label for the end of the insertion loop */
 	int srcTab = 0;		/* Data comes from this temporary cursor if >=0 */
 	int addrInsTop = 0;	/* Jump to label "D" */
@@ -378,6 +380,8 @@ sqlite3Insert(Parse * pParse,	/* Parser context */
 	if (sqlite3AuthCheck(pParse, SQLITE_INSERT, pTab->zName, 0, "")) {
 		goto insert_cleanup;
 	}
+
+	space_id = (int) SQLITE_PAGENO_TO_SPACEID(pTab->tnum);
 
 	/* Figure out if we have any triggers and if the table being
 	 * inserted into is a view
@@ -758,7 +762,7 @@ sqlite3Insert(Parse * pParse,	/* Parser context */
 			if (j < 0 || nColumn == 0
 			    || (pColumn && j >= pColumn->nId)) {
 				if (i == pTab->iAutoIncPKey) {
-					sqlite3VdbeAddOp2(v, OP_Null, 0, iRegStore);
+					sqlite3VdbeAddOp2(v, OP_NextValue, space_id, iRegStore);
 					continue;
 				}
 				sqlite3ExprCodeFactorable(pParse,
