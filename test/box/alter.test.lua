@@ -474,7 +474,7 @@ format[9] = {name = 'field9', type = 'array'}
 format[10] = {name = 'field10', type = 'map'}
 s = box.schema.space.create('test', {format = format})
 pk = s:create_index('pk')
-t = s:replace{1, 2, 3, '4', 5.5, -6, true, 8, {9, 9}, {val = 10}}
+t = s:replace{1, {2}, 3, '4', 5.5, -6, true, -8, {9, 9}, {val = 10}}
 
 test_run:cmd("setopt delimiter ';'")
 function fail_format_change(fieldno, new_type)
@@ -635,6 +635,17 @@ s:format(format)
 s:delete(1)
 -- Disable is_nullable on empty space
 s:format(format)
+-- Disable is_nullable on a non-empty space.
+format[2].is_nullable = true
+s:format(format)
+s:replace{1, 1}
+format[2].is_nullable = false
+s:format(format)
+-- Enable is_nullable on a non-empty space.
+format[2].is_nullable = true
+s:format(format)
+s:replace{1, box.NULL}
+s:delete{1}
 s:format({})
 
 s:create_index('secondary', { parts = {{2, 'string', is_nullable = true}} })
@@ -684,6 +695,34 @@ pk:alter{parts = {{1, 'integer'}}}
 s:replace{-2}
 s:select{}
 s:drop()
+
+--
+-- Allow to restrict space format, if corresponding restrictions
+-- already are defined in indexes.
+--
+test_run:cmd("setopt delimiter ';'")
+function check_format_restriction(engine, name)
+    local s = box.schema.create_space(name, {engine = engine})
+    local pk = s:create_index('pk')
+    local format = {}
+    format[1] = {name = 'field1'}
+    s:replace{1}
+    s:replace{100}
+    s:replace{0}
+    s:format(format)
+    s:format()
+    format[1].type = 'unsigned'
+    s:format(format)
+end;
+test_run:cmd("setopt delimiter ''");
+check_format_restriction('memtx', 'test1')
+check_format_restriction('vinyl', 'test2')
+box.space.test1:format()
+box.space.test1:select{}
+box.space.test2:format()
+box.space.test2:select{}
+box.space.test1:drop()
+box.space.test2:drop()
 
 --
 -- gh-2914: Allow any space name which consists of printable characters
@@ -755,4 +794,26 @@ t2.field1
 t2.field_1
 t3.field1
 t3.field_1
+s:drop()
+
+--
+-- gh-3008. Ensure the change of hash index parts updates hash
+-- key_def.
+--
+s = box.schema.create_space('test')
+pk = s:create_index('pk', {type = 'hash'})
+pk:alter{parts = {{1, 'string'}}}
+s:replace{'1', '1'}
+s:replace{'1', '2'}
+pk:select{}
+pk:select{'1'}
+s:drop()
+
+--
+-- Ensure that incompatible key parts change validates format.
+--
+s = box.schema.create_space('test')
+pk = s:create_index('pk')
+s:replace{1}
+pk:alter{parts = {{1, 'string'}}} -- Must fail.
 s:drop()
