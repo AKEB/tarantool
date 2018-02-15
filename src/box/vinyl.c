@@ -1412,6 +1412,8 @@ vy_insert_secondary(struct vy_env *env, struct vy_tx *tx, struct space *space,
 	 * unique a conflict is impossible.
 	 */
 	if (index->opts.is_unique &&
+	    !key_def_includes_parts(index->key_def->column_mask,
+				    index->pk->key_def->column_mask) &&
 	    !key_update_can_be_skipped(index->key_def->column_mask,
 				       vy_stmt_column_mask(stmt)) &&
 	    (!index->key_def->is_nullable ||

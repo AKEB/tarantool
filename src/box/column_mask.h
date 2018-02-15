@@ -109,4 +109,11 @@ key_update_can_be_skipped(uint64_t key_mask, uint64_t update_mask)
 	return (key_mask & update_mask) == 0;
 }
 
+static inline bool
+key_def_includes_parts(uint64_t key_mask, uint64_t parts_mask)
+{
+	return (parts_mask & ((uint64_t) 1 << 63)) == 0 &&
+		(key_mask & parts_mask) == parts_mask;
+}
+
 #endif
