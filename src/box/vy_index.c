@@ -702,10 +702,12 @@ vy_index_add_run(struct vy_index *index, struct vy_run *run)
 	index->run_count++;
 	vy_disk_stmt_counter_add(&index->stat.disk.count, &run->count);
 
-	index->bloom_size += bloom_store_size(&run->info.bloom);
-	index->page_index_size += run->page_index_size;
+	if (run->info.has_bloom) {
+		index->bloom_size += bloom_store_size(&run->info.bloom);
+		index->env->bloom_size += bloom_store_size(&run->info.bloom);
+	}
 
-	index->env->bloom_size += bloom_store_size(&run->info.bloom);
+	index->page_index_size += run->page_index_size;
 	index->env->page_index_size += run->page_index_size;
 }
 
@@ -718,10 +720,12 @@ vy_index_remove_run(struct vy_index *index, struct vy_run *run)
 	index->run_count--;
 	vy_disk_stmt_counter_sub(&index->stat.disk.count, &run->count);
 
-	index->bloom_size -= bloom_store_size(&run->info.bloom);
-	index->page_index_size -= run->page_index_size;
+	if (run->info.has_bloom) {
+		index->bloom_size -= bloom_store_size(&run->info.bloom);
+		index->env->bloom_size -= bloom_store_size(&run->info.bloom);
+	}
 
-	index->env->bloom_size -= bloom_store_size(&run->info.bloom);
+	index->page_index_size -= run->page_index_size;
 	index->env->page_index_size -= run->page_index_size;
 }
 
