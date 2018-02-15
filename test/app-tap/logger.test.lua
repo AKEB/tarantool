@@ -1,7 +1,7 @@
 #!/usr/bin/env tarantool
 
 local test = require('tap').test('log')
-test:plan(22)
+test:plan(23)
 
 --
 -- Check that Tarantool creates ADMIN session for #! script
@@ -101,6 +101,16 @@ line = file:read()
 test:ok(not line:match("{"), "log change format")
 s, e = pcall(log.log_format, "non_format")
 test:ok(not s)
+file:close()
+
+log.log_format("json")
+os.execute(string.format("mv %s %s2", filename, filename))
+log.rotate()
+log.info("some info")
+file = io.open(filename)
+line = file:read()
+message = json.decode(line)
+test:is(message.message, "log file has been reopened", "check message after log.rotate()")
 file:close()
 test:check()
 os.exit()
